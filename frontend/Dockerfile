@@ -1,9 +1,24 @@
-FROM node:18-bullseye
+# syntax=docker/dockerfile:1.6
 
+FROM node:20-alpine AS base
 WORKDIR /app
-COPY . .
+COPY package.json package-lock.json* pnpm-lock.yaml* ./
 RUN npm install
 
+FROM base AS dev
+COPY . .
+CMD ["npm", "run", "dev"]
 
+FROM base AS builder
+COPY . .
+RUN npm run build
 
-CMD ["npm","run","dev"]
+FROM node:20-alpine AS prod
+WORKDIR /app
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/public ./public
+ENV PORT=3000
+EXPOSE 3000
+CMD ["npm", "run", "start"]

@@ -1,0 +1,22 @@
+[
+  {
+    "station_id": "28.6_77.2",
+    "timestamp_utc": "2025-01-01T00:00:00Z",
+    "temperature_k": 293.15,
+    "humidity_pct": 58.0,
+    "pressure_hpa": 1008.0,
+    "wind_speed_ms": 2.5,
+    "wind_direction_deg": 140.0,
+    "precip_mm": 0.0
+  },
+  {
+    "station_id": "28.6_77.2",
+    "timestamp_utc": "2025-01-01T01:00:00Z",
+    "temperature_k": 292.45,
+    "humidity_pct": 60.5,
+    "pressure_hpa": 1007.5,
+    "wind_speed_ms": 3.1,
+    "wind_direction_deg": 150.0,
+    "precip_mm": 0.1
+  }
+]

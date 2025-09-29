@@ -1,23 +1,90 @@
-
+version: "3.9"
 
 services:
   backend:
-    build: ./backend
-    container_name: fastapi-backend
+    build:
+      context: ./backend
+      target: dev
+    image: airosense-backend:dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - ./backend/src:/app/src
+      - ./backend:/app
+      - ./data/mock:/data/mock:ro
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg://airosense:change-me@postgres:5432/airosense
+      REDIS_URL: redis://redis:6379/0
+      FEATURE_STORE_OFFLINE_PATH: s3://local-bucket/features
+      GEE_SERVICE_ACCOUNT_JSON: /secrets/gee-sa.json
     ports:
       - "8000:8000"
-      - "8888:8888" 
-    env_file:
-      - ./backend/.env
-
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
-    build: ./frontend
-    container_name: airo-frontend
+    build:
+      context: ./frontend
+      target: dev
+    image: airosense-frontend:dev
+    command: npm run dev -- --hostname 0.0.0.0 --port 3000
     volumes:
       - ./frontend:/app
+      - /app/node_modules
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
     ports:
       - "3000:3000"
+    depends_on:
+      - backend
 
+  worker:
+    build:
+      context: ./worker
+      target: dev
+    image: airosense-worker:dev
+    command: poetry run python app/worker.py
+    volumes:
+      - ./worker:/app
+      - ./backend/scripts:/scripts
+      - ./data/mock:/data/mock:ro
+    env_file:
+      - ./backend/.env.example
+    environment:
+      BROKER_URL: redis://redis:6379/1
+      DATABASE_URL: postgresql+psycopg://airosense:change-me@postgres:5432/airosense
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: airosense
+      POSTGRES_USER: airosense
+      POSTGRES_PASSWORD: change-me
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airosense -d airosense"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:
